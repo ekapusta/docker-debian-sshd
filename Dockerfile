@@ -3,10 +3,8 @@ MAINTAINER Alexander Ustimenko "http://ustimen.co/"
 EXPOSE 22
 
 # Build args
-ARG ROOT_PASSWORD=root
-ARG SSHD_CONFIG_PERMIT_ROOT_LOGIN=yes
-ARG SSHD_CONFIG_USE_PAM=no
-ARG SSHD_CONFIG_USE_DNS=no
+COPY ARG.sh /usr/bin/ARG
+COPY build.args*.sh /etc/
 
 RUN \
     apt-get --quiet=2 update && \
@@ -16,18 +14,21 @@ RUN \
     apt-get clean && \
     rm --recursive --force /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-RUN \
-    echo "root:$ROOT_PASSWORD" | chpasswd && \
-    echo "Root password changed" && \
+WORKDIR /etc/ssh
 
-    cd /etc/ssh && \
+RUN \
+    echo "root:$(ARG ROOT_PASSWORD)" | chpasswd && \
+    echo "Root password changed" && \
+    \
     sed --in-place 's/^\(PermitRootLogin\|UsePAM\|UseDNS\)/#\1/' sshd_config && \
     echo "" >> sshd_config && \
     echo "# Custom changes from `date`" >> sshd_config && \
-    echo "PermitRootLogin $SSHD_CONFIG_PERMIT_ROOT_LOGIN" >> sshd_config && \
-    echo "UsePAM $SSHD_CONFIG_USE_PAM" >> sshd_config && \
-    echo "UseDNS $SSHD_CONFIG_USE_DNS" >> sshd_config && \
-    echo "SSH daemon config updated"
+    echo "PermitRootLogin $(ARG SSHD_CONFIG_PERMIT_ROOT_LOGIN)" >> sshd_config && \
+    echo "UsePAM $(ARG SSHD_CONFIG_USE_PAM)" >> sshd_config && \
+    echo "UseDNS $(ARG SSHD_CONFIG_USE_DNS)" >> sshd_config && \
+    echo "SSH daemon config updated" && \
+    \
+    rm /usr/bin/ARG /etc/build.args*.sh
 
 # This will create all required directories/files
 RUN service ssh start
